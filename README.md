@@ -2,7 +2,7 @@
 Reinforcement Learning for 2048 with Constraints: Handling Immovable and Non-Combining cell
 
 # Team Members
-| Header 1 | Header 2 |
+| Name | Contact|
 |----------|----------|
 | Arya Shah |Aryashah@cmail.carleton.ca|
 | Ayman Madani | aymanmadani@cmail.carleton.ca |
