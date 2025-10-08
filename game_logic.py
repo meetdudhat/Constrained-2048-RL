@@ -115,3 +115,27 @@ class Game2048:
         score_str = "Score: {}\n".format(self.score)
         board_str = str(self.board)
         return score_str + board_str
+    
+
+# Main block to play the game in the terminal
+if __name__ == "__main__":
+    game = Game2048()
+    print("Welcome to 2048!")
+    print("Use W (up), A (left), S (down), D (right) to play. Type 'q' to quit.")
+    
+    while True:
+        print(game)
+            
+        move_input = input("Enter your move (w/a/s/d): ").lower()
+        
+        if move_input == 'q':
+            break
+            
+        move_map = {'w': 'up', 'a': 'left', 's': 'down', 'd': 'right'}
+        
+        if move_input in move_map:
+            direction = move_map[move_input]
+            if not game.move(direction):
+                print("Invalid move. Try another direction.")
+        else:
+            print("Invalid input. Please use w, a, s, or d.")
