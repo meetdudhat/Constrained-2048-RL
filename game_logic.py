@@ -110,6 +110,26 @@ class Game2048:
             return True
         return False
     
+    def is_game_over(self):
+        """Checks if the game is over (no more possible moves)."""
+        if self._get_empty_cells():
+            # Can still add tiles
+            return False
+
+        # Checks for possible horizontal merges
+        for r in range(4):
+            for c in range(3):
+                if self.board[r, c] == self.board[r, c+1]:
+                    return False
+
+        # Checks for possible vertical merges
+        for c in range(4):
+            for r in range(3):
+                if self.board[r, c] == self.board[r+1, c]:
+                    return False
+        
+        return True
+    
     def __str__(self):
         """String representation for printing the board."""
         score_str = "Score: {}\n".format(self.score)
@@ -125,6 +145,10 @@ if __name__ == "__main__":
     
     while True:
         print(game)
+        
+        if game.is_game_over():
+            print("Game Over!")
+            break
             
         move_input = input("Enter your move (w/a/s/d): ").lower()
         
