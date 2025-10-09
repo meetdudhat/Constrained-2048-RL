@@ -130,6 +130,10 @@ class Game2048:
         
         return True
     
+    def has_won(self):
+        """Returns True if the 2048 tile is on the board."""
+        return np.any(self.board == 2048)
+    
     def __str__(self):
         """String representation for printing the board."""
         score_str = "Score: {}\n".format(self.score)
@@ -145,6 +149,10 @@ if __name__ == "__main__":
     
     while True:
         print(game)
+        
+        if game.has_won():
+            print("Congratulations! You've reached 2048! You win! 🎉")
+            break
         
         if game.is_game_over():
             print("Game Over!")
