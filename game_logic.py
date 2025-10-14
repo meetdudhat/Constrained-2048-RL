@@ -7,6 +7,10 @@ class Game2048:
         Initializes the game board and score.
         """
         self.board = np.zeros((4, 4), dtype=int)
+        
+        # Place the immovable block
+        self.board[3, 0] = -1
+        
         self.score = 0
         # Starts the game with two random tiles
         self._add_new_tile()
@@ -28,23 +32,26 @@ class Game2048:
             # Uses weighted choice for 2 or 4
             self.board[row, col] = np.random.choice([2, 4], p=[0.9, 0.1])
     
-    def _process_line(self, line):
+    def _process_helper(self, line):
         """
-        Processes a single line (row or column) for a move.
-        It handles both compressing and merging tiles.
-        
-        Example: [2, 0, 2, 4] -> [4, 4, 0, 0]
+        Helper to compress and merge a single segment of a line.
         """
         # 1. Compression: Moves all non-zero tiles to the left
         non_zero_tiles = line[line != 0]
         
-        new_line = np.zeros(4, dtype=int)
+        new_line = np.zeros_like(line, dtype=int)
+        # new_line = np.zeros(4, dtype=int)
         line_score = 0
         
         # 2. Merging
         i = 0
         j = 0
         while i < len(non_zero_tiles):
+            # Skips non-mergable block (If we decide to go with this rule instead)
+            # if non_zero_tiles[i] == -1:
+            #     new_line[j] = -1
+            #     i += 1
+                
             if i + 1 < len(non_zero_tiles) and non_zero_tiles[i] == non_zero_tiles[i+1]:
                 # Merge tiles
                 merged_value = non_zero_tiles[i] * 2
@@ -59,6 +66,37 @@ class Game2048:
             j += 1
             
         return new_line, line_score
+    
+    def _process_line(self, line):
+        """
+        Processes a single line (row or column) for a move.
+        It treats immovable blocks (-1) as walls spliting the line by blocks,
+        processing each part, and rejoins them.
+        
+        Example: [-1, 0, 2, 2] -> [-1, 4, 0, 0]
+        """
+        try:
+            block_index = np.where(line == -1)[0][0]
+        except IndexError: # No block found in this line
+            return self._process_helper(line)
+        
+        # Processes segment before the block
+        part_before = line[:block_index]
+        processed_before, score_before = self._process_helper(part_before)
+         
+        # Processes segment after the block
+        part_after = line[block_index+1:]
+        processed_after, score_after = self._process_helper(part_after)
+        
+        # Stitch the line back together
+        new_line = np.zeros(4, dtype=int)
+        new_line[:block_index] = processed_before
+        new_line[block_index] = -1
+        new_line[block_index+1:] = processed_after
+        
+        total_score = score_before + score_after
+         
+        return new_line, total_score
     
     def move(self, direction):
         """
@@ -119,13 +157,13 @@ class Game2048:
         # Checks for possible horizontal merges
         for r in range(4):
             for c in range(3):
-                if self.board[r, c] == self.board[r, c+1]:
+                if self.board[r, c] != -1 and self.board[r, c] == self.board[r, c+1]:
                     return False
 
         # Checks for possible vertical merges
         for c in range(4):
             for r in range(3):
-                if self.board[r, c] == self.board[r+1, c]:
+                if self.board[r, c] != -1 and self.board[r, c] == self.board[r+1, c]:
                     return False
         
         return True
