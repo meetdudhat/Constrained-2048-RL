@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from game_logic import Game2048
+from src.game.constrained_game import Game2048
 
 class TestGame2048(unittest.TestCase):
 

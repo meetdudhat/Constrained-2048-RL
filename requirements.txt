@@ -1,0 +1,3 @@
+# This project was tested with Python 3.11.9
+numpy
+gymnasium
