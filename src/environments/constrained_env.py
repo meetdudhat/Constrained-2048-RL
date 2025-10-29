@@ -1,7 +1,7 @@
 import gymnasium
 from gymnasium import spaces
 import numpy as np
-from game_logic import Game2048
+from src.game.constrained_game import ConstrainedGame2048
 
 class Constrained2048Env(gymnasium.Env):
     """
@@ -16,7 +16,7 @@ class Constrained2048Env(gymnasium.Env):
         
         super().__init__()
         
-        self.game = Game2048()
+        self.game = ConstrainedGame2048()
         
         # Defines the action space: 4 discrete actions (up, down, left, right)
         self.action_space = spaces.Discrete(4)
@@ -44,7 +44,7 @@ class Constrained2048Env(gymnasium.Env):
         super().reset(seed=seed)
         
         # Start a new game
-        self.game = Game2048()
+        self.game = ConstrainedGame2048()
         
         observation = self.game.board
         
@@ -66,13 +66,17 @@ class Constrained2048Env(gymnasium.Env):
         score_before_move = self.game.score
         
         # performs the action
-        self.game.move(direction)
+        valid_move = self.game.move(direction)
         
         # gets the new state
         observation = self.game.board
         
-        # calulates the reward as thes score difference
-        reward = self.game.score - score_before_move
+        # Added penalty for invalid moves to help the agent learn
+        if not valid_move:
+            reward = -1  # Punish invalid moves
+        else:
+            # calulates the reward as thes score difference
+            reward = self.game.score - score_before_move
         
         # terminated is True if the game is won or over
         terminated = self.game.has_won() or self.game.is_game_over()

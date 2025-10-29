@@ -1,6 +1,6 @@
 import gymnasium
 import time
-from env_2048 import Constrained2048Env
+from src.environments.constrained_env import Constrained2048Env
 
 env = Constrained2048Env(render_mode="human")
 

@@ -1,6 +1,6 @@
 import random
 import time
-from game_logic import Game2048
+from src.game.constrained_game import Game2048
 
 '''
 A baseline agent that interacts with our 2048 game by choosing random moves.
