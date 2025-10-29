@@ -19,19 +19,19 @@ Reinforcement Learning for 2048 with Constraints: Handling Immovable and Non-Com
 
 ---
 
-### **Oct 29 – First RL Agent** 🤖
+### **Oct 30 – First RL Agent** 🤖
 - Implement and train an initial RL agent on the *standard* 2048 game to verify that the learning process works.
 - Extend and adapt this agent to handle the unique challenges of the constrained environment.
 
 ---
 
-### **Nov 12 – Improvements & Analysis** 📈
+### **Nov 15 – Improvements & Analysis** 📈
 - Experiment with different reward structures (e.g., adding penalties for invalid moves, rewarding empty cells).
 - Collect performance results from the new agent and compare them against the initial baseline.
 
 ---
 
-### **Nov 26 – Final Results & Deliverables** 📦
+### **Nov 30 – Final Results & Deliverables** 📦
 - Tune hyperparameters and finalize the best-performing agent.
 - Run simple robustness checks to test the agent's stability.
 - Prepare final deliverables:
