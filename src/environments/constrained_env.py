@@ -34,7 +34,15 @@ class Constrained2048Env(gymnasium.Env):
         self.observation_space = spaces.Box(low=-1, high=np.inf, shape=(4, 4), dtype=int)
         
         self.render_mode = render_mode
-        
+    
+    def _get_episode_info(self):
+        """Helper to safely get logging info."""
+        positive_tiles = self.game.board[self.game.board > 0]
+        max_tile = int(np.max(positive_tiles)) if positive_tiles.size > 0 else 0
+        return {
+            "score": self.game.score,
+            "max_tile": max_tile
+        }
     
     def reset(self, seed=None, options=None):
         """
@@ -48,11 +56,13 @@ class Constrained2048Env(gymnasium.Env):
         
         observation = self.game.board
         
+        info = self._get_episode_info()
+        
         if self.render_mode == "human":
             self.render()
         
         
-        return observation, {}
+        return observation, info
     
     def step(self, action):
         """
@@ -84,10 +94,13 @@ class Constrained2048Env(gymnasium.Env):
         # truncated is False (no time limit)
         truncated = False
         
+        if terminated:
+            info = self._get_episode_info()
+        
         if self.render_mode == "human":
             self.render()
             
-        return observation, reward, terminated, truncated, {}
+        return observation, reward, terminated, truncated, info
     
 
     def render(self):
