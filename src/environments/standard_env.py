@@ -23,12 +23,23 @@ class Standard2048Env(gymnasium.Env):
             3: 'left'
         }
         self.render_mode = render_mode
+    
+    def _get_episode_info(self):
+        """Helper to safely get logging info."""
+        positive_tiles = self.game.board[self.game.board > 0]
+        max_tile = int(np.max(positive_tiles)) if positive_tiles.size > 0 else 0
+        return {
+            "score": self.game.score,
+            "max_tile": max_tile
+        }
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.game = StandardGame2048()
         observation = self.game.board
-        info = {}
+        
+        info = self._get_episode_info()
+        
         if self.render_mode == "human":
             self.render()
         return observation, info
@@ -48,6 +59,9 @@ class Standard2048Env(gymnasium.Env):
         terminated = self.game.has_won() or self.game.is_game_over()
         truncated = False
         info = {}
+        
+        if terminated:
+            info = self._get_episode_info()
         
         if self.render_mode == "human":
             self.render()
