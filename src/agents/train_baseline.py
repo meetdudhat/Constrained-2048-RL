@@ -11,6 +11,8 @@ from stable_baselines3.common.logger import TensorBoardOutputFormat
 
 from src.environments.standard_env import Standard2048Env
 
+from src.environments.wrapper import Log2Wrapper
+
 # --- Arg Configurations ---
 parser = argparse.ArgumentParser(description="Trains a DQN agent for 2048.")
 parser.add_argument(
@@ -67,7 +69,16 @@ os.makedirs(FINAL_LOG_DIR, exist_ok=True)
 
 # --- Environment Setup ---
 print(f"Setting up environment... Logging to {FINAL_LOG_DIR}")
+print(f"Using state representation: {args.state}")
 env = Standard2048Env()
+
+
+# Conditionally applys the wrapper based on the --state argument
+if args.state == "log2":
+    print("Applying Log2Wrapper...")
+    env = Log2Wrapper(env)
+else:
+    print(f"State Representation: {args.state}")
 
 # Applys the Monitor wrapper
 info_keywords = ("score", "max_tile")
@@ -176,10 +187,13 @@ print(f"Final model saved to {FINAL_MODEL_PATH}")
 env.close()
 
 # Run Test:
-# python -m src.agents.train_baseline --group="Rewards" --reward="merge_only" --state="raw" --timesteps=50000 --log_name="smoke_test" --checkpoint_freq=10000
+# python -m src.agents.train_baseline --group="Rewards" --reward="raw_score" --state="raw" --timesteps=50000 --log_name="smoke_test" --checkpoint_freq=10000
 
 # Run 1:
-# python -m src.agents.train_baseline --group="States" --reward="merge_only" --state="raw"
+# python -m src.agents.train_baseline --group="States" --reward="raw_score" --state="raw"
+
+# Run 2:
+# python -m src.agents.train_baseline --group="States" --reward="raw_score" --state="log2"
 
 # View Logs:
 # tensorboard --logdir=logs
