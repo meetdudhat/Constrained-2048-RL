@@ -9,7 +9,7 @@ class Constrained2048Env(gymnasium.Env):
     This class wraps the game logic.
     """
     
-    def __init__(self, render_mode=None):
+    def __init__(self, render_mode=None, reward_mode="raw_score"):
         """
         Initializes the environment, defining the state and action spaces.
         """
@@ -17,7 +17,8 @@ class Constrained2048Env(gymnasium.Env):
         super().__init__()
         
         self.game = ConstrainedGame2048()
-        
+        self.reward_mode = reward_mode
+
         # Defines the action space: 4 discrete actions (up, down, left, right)
         self.action_space = spaces.Discrete(4)
         
@@ -84,9 +85,13 @@ class Constrained2048Env(gymnasium.Env):
         # Added penalty for invalid moves to help the agent learn
         if not valid_move:
             reward = -1  # Punish invalid moves
+            merged_tiles = []
         else:
-            # calulates the reward as thes score difference
-            reward = self.game.score - score_before_move
+            merged_tiles = getattr(self.game, "last_merged_tiles", [])
+            if self.reward_mode == "log_merge":  # Use log2 of merged tiles as reward if specified in arguments
+                reward = float(np.sum(np.log2(merged_tiles))) if merged_tiles else 0.0
+            else:
+                reward = self.game.score - score_before_move #   Standard reward: score delta
         
         # terminated is True if the game is won or over
         terminated = self.game.has_won() or self.game.is_game_over()

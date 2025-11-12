@@ -5,10 +5,11 @@ from src.game.standard_game import StandardGame2048
 
 class Standard2048Env(gymnasium.Env):
     
-    def __init__(self, render_mode=None):
+    def __init__(self, render_mode=None, reward_mode="raw_score"):
         super().__init__()
         self.game = StandardGame2048()
         self.action_space = spaces.Discrete(4)
+        self.reward_mode = reward_mode
         
         # Observation space is 0 to infinity (no -1 block)
         self.observation_space = spaces.Box(low=0, 
@@ -53,12 +54,19 @@ class Standard2048Env(gymnasium.Env):
         
         if not valid_move:
             reward = -1 # Punish invalid moves
+            merged_tiles = []
         else:
-            reward = self.game.score - score_before_move
+            merged_tiles = getattr(self.game, "last_merged_tiles", [])
+            if self.reward_mode == "log_merge":  # Use log2 of merged tiles as reward if specified in arguments
+                reward = float(np.sum(np.log2(merged_tiles))) if merged_tiles else 0.0
+            else:
+                reward = self.game.score - score_before_move #   Standard reward: score delta
 
         terminated = self.game.has_won() or self.game.is_game_over()
         truncated = False
-        info = {}
+        info = {"merged_tiles": merged_tiles,
+                "raw_score_delta": self.game.score - score_before_move,
+                "reward_mode": self.reward_mode}
         
         if terminated:
             info = self._get_episode_info()
