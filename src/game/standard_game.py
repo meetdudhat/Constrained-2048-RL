@@ -9,6 +9,7 @@ class StandardGame2048:
         self.board = np.zeros((4, 4), dtype=int)
         
         self.score = 0
+        self.last_merged_tiles = [] # To track merged tiles in the last move
         # Starts the game with two random tiles
         self._add_new_tile()
         self._add_new_tile()
@@ -49,6 +50,7 @@ class StandardGame2048:
                 merged_value = non_zero_tiles[i] * 2
                 new_line[j] = merged_value
                 line_score += merged_value
+                self.last_merged_tiles.append(merged_value)
                 # Skip the next tile because it was merged
                 i += 2
             else:
@@ -65,7 +67,7 @@ class StandardGame2048:
         Returns True if the board changed, False otherwise.
         """
         original_board = self.board.copy()
-        
+        self.last_merged_tiles = [] # reset it to track merged tiles in this move
         # Rotates the board so we can always process it as a left move
         if direction == 'left':
             # 0 rotations

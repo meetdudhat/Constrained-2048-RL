@@ -8,6 +8,7 @@ class ConstrainedGame2048:
         """
         self.board = np.zeros((4, 4), dtype=int)
         
+        self.last_merged_tiles = [] # To track merged tiles in the last move
         # Place the immovable block
         self.board[3, 0] = -1
         
@@ -57,6 +58,7 @@ class ConstrainedGame2048:
                 merged_value = non_zero_tiles[i] * 2
                 new_line[j] = merged_value
                 line_score += merged_value
+                self.last_merged_tiles.append(merged_value)
                 # Skip the next tile because it was merged
                 i += 2
             else:
@@ -104,6 +106,7 @@ class ConstrainedGame2048:
         Returns True if the board changed, False otherwise.
         """
         original_board = self.board.copy()
+        self.last_merged_tiles = [] # reset it to track merged tiles in this move
         
         # Rotates the board so we can always process it as a left move
         if direction == 'left':

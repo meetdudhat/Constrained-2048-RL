@@ -70,7 +70,7 @@ os.makedirs(FINAL_LOG_DIR, exist_ok=True)
 # --- Environment Setup ---
 print(f"Setting up environment... Logging to {FINAL_LOG_DIR}")
 print(f"Using state representation: {args.state}")
-env = Standard2048Env()
+env = Standard2048Env(reward_mode=args.reward)
 
 
 # Conditionally applys the wrapper based on the --state argument
