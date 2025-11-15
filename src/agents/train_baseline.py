@@ -11,6 +11,10 @@ from stable_baselines3.common.logger import TensorBoardOutputFormat
 
 from src.environments.standard_env import Standard2048Env
 
+# added-start
+from src.environments.constrained_env import Constrained2048Env
+# added-end
+
 from src.environments.wrapper import Log2Wrapper
 
 # --- Arg Configurations ---
@@ -51,6 +55,16 @@ parser.add_argument(
     default=100_000,
     help="Save a model checkpoint every N steps."
 )
+
+#added-start
+parser.add_argument(
+    "--env",
+    choices=["standard", "constrained"],
+    default="standard",
+    help="Which 2048 environment to use."
+)
+#added-end
+
 args = parser.parse_args()
 
 run_name_tags = f"reward-{args.reward}_state-{args.state}"
@@ -70,10 +84,16 @@ os.makedirs(FINAL_LOG_DIR, exist_ok=True)
 # --- Environment Setup ---
 print(f"Setting up environment... Logging to {FINAL_LOG_DIR}")
 print(f"Using state representation: {args.state}")
+
+# added-start
+print(f"Selected environment: {args.env}")
+EnvClass = Standard2048Env if args.env == "standard" else Constrained2048Env
+# added-end
+
 env = Standard2048Env(reward_mode=args.reward)
 
 
-# Conditionally applys the wrapper based on the --state argument
+# Conditionally applies the wrapper based on the --state argument
 if args.state == "log2":
     print("Applying Log2Wrapper...")
     env = Log2Wrapper(env)
