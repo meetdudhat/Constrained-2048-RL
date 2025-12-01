@@ -207,5 +207,14 @@ env.close()
 # Run 2:
 # python -m src.agents.train_baseline --group="States" --reward="raw_score" --state="log2"
 
+# Run 3:
+# python -m src.agents.train_baseline --group="Rewards" --reward="log_merge" --state="log2"
+
+# Run 4:
+# python -m src.agents.train_baseline --group="Rewards" --reward="potential_log" --state="log2"
+
+# Run 5:
+# python -m src.agents.train_baseline --group="FinalTest" --reward="potential_log" --state="log2" --env="constrained"
+
 # View Logs:
 # tensorboard --logdir=logs
