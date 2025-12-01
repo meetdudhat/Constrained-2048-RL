@@ -15,10 +15,12 @@ Architecture Note:
 """
 
 import torch
+import torch_directml
 
 # --- System Configuration ---
 # Auto-detect CUDA for GPU acceleration; fallback to CPU for compatibility.
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = torch_directml.device()
 
 # The objective tile. Reaching this terminates the episode with a Win signal (+1).
 WIN_TILE = 2048
@@ -26,49 +28,49 @@ WIN_TILE = 2048
 # ==============================================================================
 # ACTIVE CONFIGURATION PROFILE: "High Quality" (~10 Hour Runtime w no GPU)
 # ==============================================================================
-NUM_SIMULATIONS = 150
-C_PUCT = 1.0                
-DIRICHLET_ALPHA = 0.3
-EXPLORATION_FRACTION = 0.25
-
-# --- Self-Play Config ---
-NUM_ITERATIONS = 12 
-NUM_SELF_PLAY_GAMES = 20    # Play 20 games per cycle to get stable data
-REPLAY_BUFFER_SIZE = 50000
-ACTION_TEMPERATURE_MOVES = 10
-ACTION_TEMPERATURE = 1.0
-
-# --- Network & Training Config ---
-BATCH_SIZE = 16
-LEARNING_RATE = 1e-4
-WEIGHT_DECAY = 1e-4
-NUM_TRAIN_STEPS = 200
-CHECKPOINT_INTERVAL = 1     
-PIT_GAMES = 6               # Play 6 games to reduce luck in evaluation
-UPDATE_THRESHOLD = 0.51
-
-
-# # --- ~4 Hour Config ---
-# NUM_SIMULATIONS = 75
+# NUM_SIMULATIONS = 150
 # C_PUCT = 1.0                
 # DIRICHLET_ALPHA = 0.3
 # EXPLORATION_FRACTION = 0.25
 
 # # --- Self-Play Config ---
-# NUM_ITERATIONS = 8
-# NUM_SELF_PLAY_GAMES = 15    # Play 15 games per cycle
+# NUM_ITERATIONS = 12 
+# NUM_SELF_PLAY_GAMES = 20    # Play 20 games per cycle to get stable data
 # REPLAY_BUFFER_SIZE = 50000
 # ACTION_TEMPERATURE_MOVES = 10
 # ACTION_TEMPERATURE = 1.0
 
 # # --- Network & Training Config ---
-# BATCH_SIZE = 12
+# BATCH_SIZE = 16
 # LEARNING_RATE = 1e-4
 # WEIGHT_DECAY = 1e-4
-# NUM_TRAIN_STEPS = 150       # 150 updates per cycle
+# NUM_TRAIN_STEPS = 200
 # CHECKPOINT_INTERVAL = 1     
-# PIT_GAMES = 4               # Play 4 evaluation games
+# PIT_GAMES = 6               # Play 6 games to reduce luck in evaluation
 # UPDATE_THRESHOLD = 0.51
+
+
+# --- ~4 Hour Config ---
+NUM_SIMULATIONS = 75
+C_PUCT = 1.0                
+DIRICHLET_ALPHA = 0.3
+EXPLORATION_FRACTION = 0.25
+
+# --- Self-Play Config ---
+NUM_ITERATIONS = 8
+NUM_SELF_PLAY_GAMES = 15    # Play 15 games per cycle
+REPLAY_BUFFER_SIZE = 50000
+ACTION_TEMPERATURE_MOVES = 10
+ACTION_TEMPERATURE = 1.0
+
+# --- Network & Training Config ---
+BATCH_SIZE = 12
+LEARNING_RATE = 1e-4
+WEIGHT_DECAY = 1e-4
+NUM_TRAIN_STEPS = 150       # 150 updates per cycle
+CHECKPOINT_INTERVAL = 1     
+PIT_GAMES = 4               # Play 4 evaluation games
+UPDATE_THRESHOLD = 0.51
 
 
 

@@ -290,7 +290,7 @@ def main():
     """
     # --- Configuration ---
     writer = SummaryWriter(log_dir="logs/improved_mcts")
-    env = Game2048Env()
+    env = Game2048Env(immovable_cell=(3,0))
     
     current_best_net = Network(input_channels=env.num_channels).to(DEVICE)
     replay_buffer = ReplayBuffer(REPLAY_BUFFER_SIZE)

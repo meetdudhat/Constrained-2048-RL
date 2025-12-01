@@ -44,9 +44,9 @@ def evaluate_agent():
     args = parser.parse_args()
 
     # --- Environment Setup ---
-    # The 'Constrained' variant places an immovable tile at (0,0) to test
+    # The 'Constrained' variant places an immovable tile at (3,0) to test
     # the agent's ability to adapt to blocked corners.
-    immovable = (0,0) if args.env == "constrained" else None
+    immovable = (3,0) if args.env == "constrained" else None
     env = Game2048Env(immovable_cell=immovable)
 
     # --- Model Loading ---
@@ -54,7 +54,11 @@ def evaluate_agent():
     network = Network(input_channels=env.num_channels).to(DEVICE)
     
     # map_location ensures a model trained on a GPU can still be evaluated on a CPU
-    network.load_state_dict(torch.load(args.model_path, map_location=DEVICE))
+    
+    # network.load_state_dict(torch.load(args.model_path, map_location=DEVICE))
+    state_dict = torch.load(args.model_path, map_location="cpu")
+    network.load_state_dict(state_dict)
+    
     network.eval() # Set to evaluation mode (disables BatchNorm tracking/Dropout)
 
     all_scores = []
@@ -91,6 +95,11 @@ def evaluate_agent():
         # --- Metrics Collection ---
         score = env.game.score
         max_tile = env.game.get_max_tile()
+        
+        if max_tile >= 1024:  # Only print interesting boards
+            print(f"\nEpisode {i} Final Board (Max: {max_tile}):")
+            print(env.game.board)
+            print("-" * 20)
         
         all_scores.append(score)
         all_max_tiles.append(max_tile)
