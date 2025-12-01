@@ -1,3 +1,12 @@
+"""
+Evaluation Script for 2048 DQN Agents.
+
+This script loads a pre-trained reinforcement learning model and subjects it to
+a series of evaluation episodes. It aggregates key performance metrics (Win Rate,
+Average Score, Max Tile) to validate the agent's ability to generalize beyond
+the training phase.
+"""
+
 import argparse
 import numpy as np
 
@@ -8,14 +17,24 @@ from src.environments.standard_env import Standard2048Env
 from src.environments.constrained_env import Constrained2048Env
 from src.environments.wrapper import Log2Wrapper
 
+# Safety cap to prevent infinite loops in broken agents or stuck states
 MAX_STEPS_PER_EPISODE = 5000
 
 def evaluate_agent():
-
     """
-    This script is used for project's evaluation, 
-    it loads fully-trained model and runs them to gather final,
-    unbiased performance statistics for our report.
+    Orchestrates the evaluation of a saved agent.
+
+    Process:
+    1. Reconstructs the specific environment configuration (Standard/Constrained, Raw/Log2).
+    2. Loads the checkpointed model.
+    3. Runs N evaluation episodes to gather statistical significance.
+    4. Reports aggregate metrics including the specific "Win Rate" (reaching 2048).
+
+    Args:
+        None (Parses command line arguments directly).
+    
+    Returns:
+        None (Prints metrics to stdout).
     """
 
     # Argument Parser setup that takes arguments 

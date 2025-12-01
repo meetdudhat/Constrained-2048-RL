@@ -1,3 +1,24 @@
+"""
+Training Entry Point for DQN Agent on 2048.
+
+This script manages the training pipeline for a Deep Q-Network (DQN) agent.
+It handles:
+1. Argument parsing for experiment configuration (reward shaping, state representation).
+2. Environment instantiation and wrapping (normalization, monitoring).
+3. Model initialization with specific network architecture and exploration schedules.
+4. Custom logging to capture 2048-specific metrics (Max Tile, Raw Score) in TensorBoard.
+
+Usage Examples:
+    # Smoke Test
+    python -m src.agents.train_baseline --group="Test" --timesteps=1000 --log_name="smoke_test"
+
+    # Standard State, Raw Reward
+    python -m src.agents.train_baseline --group="States" --reward="raw_score" --state="raw"
+
+    # Log2 Normalized State, Potential-based Reward
+    python -m src.agents.train_baseline --group="Rewards" --reward="potential_log" --state="log2"
+"""
+
 import gymnasium
 import numpy as np
 import os
@@ -14,7 +35,7 @@ from src.environments.constrained_env import Constrained2048Env
 
 from src.environments.wrapper import Log2Wrapper
 
-# --- Arg Configurations ---
+# --- Argument Parsing & Configuration ---
 parser = argparse.ArgumentParser(description="Trains a DQN agent for 2048.")
 parser.add_argument(
     "--group",
@@ -61,9 +82,8 @@ parser.add_argument(
 
 args = parser.parse_args()
 
+# Build the folder structure for TensorBoard logs
 run_name_tags = f"reward-{args.reward}_state-{args.state}"
-
-# --- Configuration ---
 TOTAL_TIMESTEPS = args.timesteps
 LOG_NAME = args.log_name
 CHECKPOINT_FREQ = args.checkpoint_freq
@@ -85,19 +105,21 @@ EnvClass = Standard2048Env if args.env == "standard" else Constrained2048Env
 env = EnvClass(reward_mode=args.reward)
 
 
-# Conditionally applies the wrapper based on the --state argument
+# The Log2Wrapper changes board values to log2(x). This helps the neural network
+# learn better by keeping the input numbers smaller and more consistent.
 if args.state == "log2":
     print("Applying Log2Wrapper...")
     env = Log2Wrapper(env)
 else:
     print(f"State Representation: {args.state}")
 
-# Applys the Monitor wrapper
+# Wrap the environment so we can see internal stats (score, max_tile) in the logger
 info_keywords = ("score", "max_tile")
 env = Monitor(env, FINAL_LOG_DIR, info_keywords=info_keywords)
 print("Environment setup complete.")
 
-# --- Model Setup ---
+# MLP Policy with moderate depth (256x256) is selected because 2048 is a strategic
+# game, not a complex image recognition task requiring massive networks.
 print("Initializing DQN model...")
 model = DQN(
     "MlpPolicy",
@@ -118,11 +140,14 @@ model = DQN(
 
 print("Model initialized.")
 
-# --- Callback Class ---
+# --- Custom Callbacks ---
 class EpisodeLogCallback(BaseCallback):
     """
-    Custom callback for plotting final episode values
-    directly to tensorboard in the 'rollout/' section.
+    Connects to the Stable Baselines3 training loop to log 2048-specific stats.
+    
+    SB3 usually logs standard RL stats (like mean reward). This callback
+    reads the environment's `info` dictionary at the end of an episode
+    to log 'score' and 'max_tile' directly to TensorBoard.
     """
     def __init__(self, verbose=0):
         super(EpisodeLogCallback, self).__init__(verbose)
@@ -130,9 +155,9 @@ class EpisodeLogCallback(BaseCallback):
 
     def _on_training_start(self) -> None:
         """
-        This method is called before the first rollout starts.
+        Gets the TensorBoard writer from the logger so we can write
+        our own values during training steps.
         """
-        # Finds the TensorBoardOutputFormat
         for formatter in self.logger.output_formats:
             if isinstance(formatter, TensorBoardOutputFormat):
                 self.writer = formatter.writer
@@ -146,15 +171,16 @@ class EpisodeLogCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         """
-        Check if the episode is done and log the final info.
+        Runs at every step. Checks if the game ended to log final stats.
+        
+        Returns:
+            bool: True (continue training).
         """
+        # `self.locals` gives access to the variables inside `model.learn`
         if self.locals['dones'][0]:
-            
-            # Gets the info dict from the last step
             info = self.locals['infos'][0]
             
-            # Logs score and max_tile to 'rollout/' namespace
-            # Uses self.n_calls as the step counter
+            # Log specific game stats to the 'rollout' section
             if 'score' in info:
                 self.writer.add_scalar('rollout/score', info['score'], self.n_calls)
             if 'max_tile' in info:
