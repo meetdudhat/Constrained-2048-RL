@@ -3,3 +3,5 @@ gymnasium
 stable-baselines3
 torch
 tensorboard
+tqdm
+numba

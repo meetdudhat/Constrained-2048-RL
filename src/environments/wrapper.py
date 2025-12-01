@@ -4,39 +4,69 @@ import numpy as np
 
 class Log2Wrapper(gymnasium.ObservationWrapper):
     """
-    Wraps the environment to apply log2 to the observation (board).
-    This normalization is crucial for the neural network to
-    understand the exponential nature of the game (2, 4, 8, ...).
+    Normalizes the observation space by converting raw tile values to their log2 representation.
+
+    Rationale:
+        In 2048, values scale exponentially (2^1 to 2^16). Feeding raw values 
+        (e.g., 2 vs 4096) into a neural network causes a large magnitude variance, 
+        leading to unstable gradients and slow convergence.
+        
+        This wrapper compresses the state space to a linear scale:
+        - 2    -> 1.0
+        - 2048 -> 11.0
+        This allows the optimizer to treat the difference between 2->4 and 1024->2048
+        as numerically equivalent steps.
+
+    Args:
+        env (gymnasium.Env): The environment to wrap.
+        policy_type (str): 'mlp' or 'cnn'. Determines the output shape.
+                           'cnn' enforces a (Channel, Height, Width) format required
+                           by PyTorch Conv2d layers.
     """
-    def __init__(self, env):
+    def __init__(self, env, policy_type="mlp"):
         super().__init__(env)
         
-        # We get the 'low' value from the original env,
-        # which will be 0 for standard and -1 for constrained.
-        low = self.env.observation_space.low.min()
+        if policy_type not in ["mlp", "cnn"]:
+            raise ValueError(f"Unknown policy_type: {policy_type}. Must be 'mlp' or 'cnn'.")
         
-        # The new observation space will be floats
+        self.policy_type = policy_type
+        
+        # We get the 'low' and 'hight value from the original env
+        low = self.observation_space.low.min()
+        high = 32.0 # Sufficient upper bound for 2048 (2^32)
+        
+        # Adjust input shape based on network architecture requirements
+        if self.policy_type == "cnn":
+            # PyTorch Conv2d requires (Channels, Height, Width)
+            self.output_shape = (1, 4, 4)
+        else:
+            # MLPs expect a flat or standard grid input
+            self.output_shape = (4, 4)
+        
         self.observation_space = spaces.Box(
             low=low, 
-            high=32, # log2(2^32) is more than enough
-            shape=(4, 4), 
+            high=high,
+            shape=self.output_shape,
             dtype=np.float32
         )
 
     def observation(self, obs):
         """
-        Applies the log2 transformation to the observation.
+        Transforms the observation matrix.
+        
+        Logic:
+            1. obs > 0  -> log2(obs)
+            2. obs == 0 -> 0.0 (Empty tiles remain zero)
+            3. obs == -1 -> -1.0 (Preserve special flags/blocking tiles)
         """
-        # We start with a float array of zeros.
         processed_obs = np.zeros_like(obs, dtype=np.float32)
 
-        # Applys log2 only to positive tiles
-        # np.log2(0) is -inf, so we use a 'where' clause.
+        # Vectorized log2 calculation avoiding div-by-zero errors (log2(0) = -inf)
         positive_mask = (obs > 0)
         processed_obs[positive_mask] = np.log2(obs[positive_mask])
         
-        # -1 block would have become 0
-        # we must explicitly set it back to -1.0
+        # Explicitly preserve special state markers (e.g., -1 for obstacles)
+        # which would otherwise be lost or malformed by log logic.
         processed_obs[obs == -1] = -1.0
         
         # --- TEMPORARY DEBUG PRINT ---
@@ -51,4 +81,5 @@ class Log2Wrapper(gymnasium.ObservationWrapper):
         #     print("="*40 + "\n")
         # --- END DEBUG ---
         
-        return processed_obs.astype(np.float32)
+        # Ensure correct channel dimensions for the selected policy
+        return processed_obs.reshape(self.output_shape).astype(np.float32)
