@@ -65,16 +65,22 @@
 \section{Introduction}
 \label{sec:intro}
 
-\textit{[Member 2: Define the problem. Mention that 2048's a state space. Explain why this is hard. Introduce the "Constrained" environment (immovable block at 3,0) and why it breaks standard strategies.]}
+The game 2048 is often used to study reinforcement learning algorithms because it contains a mix of randomness and requires long-term planning. Although it looks simple at first, it actually has a large number of possible board states (on the order of $10^{16}$). This game requires an agent to think about immediate merges for points together with long term board structure so it does not get stuck later. Most existing RL agents rely heavily on deterministic human strategies like the ``corner strategy'', where the highest tile is kept in one corner to maintain stability throughout the game.
+
+In many real life decision-making tasks, including variants of 2048, the agent does not always get a perfectly open environment. There may be some blocked areas, fixed obstacles, or parts of the space that cannot be used, which means that common heuristics like the corner strategy do not always hold. To explore this idea further, we examined a tougher version of the 2048 game. In our setup, we placed an immovable block at the coordinate $(3,0)$ on a standard $4 \times 4$ board. This block has a value of $-1$ and permanently occupies a grid cell. It never shifts or merges with any other tile. Although it is only a single blocked space, it changes how the entire board evolves because the agent now must work around this obstacle for the entire duration of the game.
+
+This added obstacle immediately disrupts the usual corner-based approach and reduces the safe spaces the agent can use. As a result, the agent must discover different ways to structure the board and can no longer rely on keeping high valued tiles locked in a corner anymore. The decision-making problem becomes significantly harder because the agent needs to reconsider how it forms merges over time, avoid blocked cell, and still manage the randomness of new tiles appearing. Studying this constrained setup helps reveal how both model-free and model-based RL methods behave when the environment is not fully open and imposes permanent spatial limits like the immovable block restricting movement.
+
 
 \subsection{MDP Specifications}
 \label{sec:mdp}
-\textit{[Member 2: Formalize the Standard Markov Decision Process here. PLEASE NOTE: Add the definition of the original \textbf{Standard Reward} (points for merging) here vs the improved MDP]}
 \begin{itemize}
-    \item \textbf{State Space ($S$):} A $4 \times 4$ grid where each tile $t \in \{2^1, \dots, 2^{16}\}$.
-    \item \textbf{Action Space ($A$):} Discrete set $\{ \text{Up, Down, Left, Right} \}$.
-    \item \textbf{Reward Function ($R$):} Sparse binary reward ($+1$ for Win, $-1$ for Loss).
-    \item \textbf{Transitions ($P$):} Stochastic tile spawning ($90\%$ prob of 2, $10\%$ prob of 4).
+    \item \textbf{State Space ($S$):} A $4 \times 4$ grid where each cell contains a tile value $t \in \{2^1, \dots, 2^{16}\}$ or is empty. In Constrained environment, one fixed coordinate contains an Immovable block with value of -1, reducing reachable grid configurations and altering legal transitions.
+    \item \textbf{Action Space ($A$):} A Discrete set of four actions $\{ \text{Up, Down, Left, Right} \}$. Each action slides all tiles in the chosen direction and merges matching tiles.
+    \item \textbf{Reward Function ($R$):} The standard 2048 reward is the merge value gained after combining tiles. Sparse binary reward ($+1$ for Win (achieving 2048 tile), $-1$ for Loss (no moves available)).
+    \item \textbf{Transition Function ($P$):} After each valid move, a new tile appears in a random location: a $2$ with $0.9$ probability and a $4$ with $0.1$ probability. In the Constrained environment, the Immovable Block is excluded from movement and from tile spawning. \\
+    
+    This MDP formulation allows us to compare how different RL approaches, specifically a Model-Free DQN and a Model-Based AlphaZero-style agent, adapt to the spatial obstruction, handle restricted transitions, and develop strategies that remain robust under constrained dynamics.
 \end{itemize}
 
 % ==========================================
@@ -188,8 +194,71 @@ Additional cost arises from processing Chance Nodes to model stochastic tile spa
 % ==========================================
 \section{Conclusion}
 \label{sec:conclusion}
-\textit{[Member 5: Summarize the project. What did we learn? Future work: Train for longer, use deeper ResNet, dynamic constraints.]}
+\subsection{What we learned about the problem}
 
+We started our project with a seemingly simple puzzle 2048, but the introduction of an immovable, non-merging "$-$1" tile turned it into a much richer reinforcement learning and planning problem. In the standard game, many strong strategies are essentially short-sighted but geometry-aware: keeping the largest tile in a corner, preserving monotonic rows and columns, and greedily taking merges that maintain empty space. In our constrained variant, these rules of thumb are no longer reliably safe. A single push that funnels mass toward the blocked corner can irreversibly destroy board geometry, trapping large tiles behind the dead zone, and collapsing future movability.
+
+This forced us to confront two important aspects of the problem:
+
+\begin{enumerate}
+    \item Long-horizon credit assignment: moves that look harmless but can be catastrophic several steps later, making short-term reward maximization insufficient.
+
+    \item Structure awareness: the agent must understand the board's physics, that is, how the constraint interacts with tile flows and empty cells rather than just memorize local patterns.
+\end{enumerate}
+
+What we learned is that the structural constraints transform 2048 from a greedy-friendly game into a planning heavy control problem.
+
+\subsection{What we learned about the approaches}
+
+We implemented and compared deep RL baselines algorithms like DQN-style methods in our custom constrained environment with a model-based AlphaZero style agent using MCTS. This comparison provided us with several insights:
+
+\begin{itemize}
+    \item Model-free deep RL conflict under constraints, even with sensible state encodings and reward shaping, the DQN baselines tended to overvalue short-term merges and often drifted tiles toward the blocked corner. They could achieve reasonable scores in easier settings, but in the truly constrained scenario they frequently converged to locally consistent, failing to systematically avoid the dead zone.
+    \item Model-based RL handled the constraint more gracefully. The AlphaZero agent explicitly simulates future roll-outs before committing to an action, allowing it to see that certain moves will squeeze tiles into unsalvageable positions. In qualitative implementations, it was observed that the planning agent tended to maintain a clean region away from the $-$1 block, keeping high-value tiles in safer lanes and maintaining more empty cells over time. 
+
+\end{itemize}
+
+We realized that the constrained 2048 problem is not only "difficult 2048", but is fundamentally a testbed for the value of look-ahead and for the limits of model-free deep RL.
+
+\subsection{Limitations and Failure Modes Observed}
+
+Despite the advantages of search, our system can still fail when stochastic spawns align unfavorably, or when the search budget is too small to notice rare but catastrophic futures (e.g., a merge that looks good but collapses the safe stack). On the model-free side, we observed sensitivity to reward shaping and replay content; agents could learn locally stable but globally brittle strategies if evaluation emphasized short horizons. 
+
+\subsection{How the method can be improved with more time and resources}
+
+\begin{enumerate}
+    \item Train for longer and extend the scale search
+            Run more self-play training for the AlphaZero agent and allocate more MCTS simulations per move, especially in late game positions where the constraints are more dangerous. This might sharpen the policy's understanding of catastrophic futures and improve robustness.
+
+    \item Introduce dynamic constraints
+            So far the constraint is static. A natural next step can be dynamic constraints, where we progressively increase constraint difficulty during training. This would test generalization and encourage the agent to learn more abstract principles like avoiding high-value tiles isolation rather than over-lifting to one specific layout.
+
+    \item Use a deeper ResNet Backbone
+            A deeper ResNet could better capture the global board structure such as empty-cell patterns around the $-$1 block and provide policy estimates for MCTS to build on.
+
+Beyond these primary directions, hybrid approaches can also be considered, with distributional RL for risk aware planning and systematic studies on reward shaping.
+
+\end{enumerate}
+
+\subsection{Summary}
+
+In this project, we designed a constrained 2048 environment, implemented model-free deep RL baselines and an AlphaZero-style MCTS agent, and systematically compared how they behave under structural constraints. 
+
+We learned that:
+
+\begin{itemize}
+    \item The constraint fundamentally changes the nature of the task, making long-term planning and geometry preservation essential.
+
+    \item Standard deep RL, which can perform reasonably in unconstrained 2048, often fails to internalize the consequences of the dead zone.
+
+    \item Model-based RL with MCTS is far better suited to this setting, precisely because it can simulate the environment’s physics and choose actions that remain viable many steps into the future.
+
+
+\end{itemize}
+
+The most promising directions are to train for longer, upgrade to a deeper ResNet backbone, and explore dynamic constraints that further stress-test the agent’s ability to generalize. More broadly, our findings highlight a transferable lesson for real-world RL: when the environment contains hard constraints and irreversible failures, planning and model-based reasoning are often necessary for robust performance. 
+
+ 
 % --- References ---
 \medskip
 \small
