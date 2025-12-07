@@ -82,9 +82,19 @@
 % ==========================================
 \section{Related Work}
 \label{sec:related}
+Szepesvári's \textit{Algorithms for Reinforcement Learning} \cite{szepesvari2010} gives us the theory behind value-based methods and was the first to establish PAC bounds on tabular Q-learning and explore the difficulties of function approximation. Our DQN baseline implementation is a DQN version of these classical principles, but operates  in a high-dimensional setting where neural networks approximate $Q(s,a)$. This is exactly the case where Szepesvári's exploration-exploitation paradox is particularly important in the given context and where extra dimensionality complicates things.
 
-\textit{[Member 3: Summarize at least 5 papers. Compare them to our work. Add references.]}
+Model-free value-based reinforcement learning was popularized by the Deep Q-Network (DQN) algorithm \cite{mnih2015dqn} by Mnih et al., which improved Q-learning on Atari with the help of replay buffers and target networks. Our baseline approach uses essentially the same recipe (replay and target network) on a reduced $4\times4$ grid with tile placement noise and a static obstacle such that generalization is more a result of exploration than image feature generalization.
 
+In Prioritized Experience Replay from Schaul et al. \cite{schaul2016per}, sample efficiency is increased by replaying transitions with high TDerror. For this project, we chose to only implement uniform replay; however, with the potential benefits of replay priorities, fewer episodes may be necessary for obstacle-aware policies.
+
+Rainbow DQN \cite{hessel2018rainbow} combines six extensions (Double Q-learning, PER, multi-step return, dueling networks with multi-output heads, Noisy Nets, distributional RL) and achieves significant Atari improvements. Our baseline excludes these for being simpler; the multi-step return and Noisy Nets from Rainbow might assist with sparse rewards from the game's merge action and continued exploration after the replay buffer is full.
+
+AlphaZero by Silver et al. \cite{silver2018azero} integrates policy-value networks with Monte Carlo Tree Search (MCTS) for perfect information game play. Our model-based agent adopts this planning approach and modifies the application scope of MCTS to a stochastic single-player environment with chance nodes for tile appearances and hybrid kernels for examining full rows and columns, thus explaining its strength within the limited environment that requires significant planning.
+
+Gayas (Expectimax for 2048) \cite{gayas2014} implement depth-limited searches with carefully designed features involving the ability to merge/monotonicity. In comparison to the above-mentioned traditional depth-limited searches as baselines, while the DQN learns to estimate values from experience instead and lacks any form of lookahead, which degrades when the immovable block breaks the standard cornering heuristics.
+
+Antonoglou et al.\ \cite{antonoglou2022} investigate planning with learnable models in stochastic tasks. Their observations confirm our finding: AlphaZero-style model-based rollouts perform better than reactive value-based approaches if one has to plan for uncertainty about the future (tile appearance) and structural constraints (cell occupied).
 % ==========================================
 % SECTION 3: APPROACHES
 % ==========================================
@@ -92,7 +102,7 @@
 \label{sec:approach}
 
 \subsection{Baseline: Deep Q-Network (DQN)}
-\textit{[Member 3: Describe the Baseline. Mention Stable Baselines3, MLP Policy, and the lack of lookahead.]}
+We apply a standard DQN from Stable Baselines3 with an MLP policy (two layers with 256-dimensional hidden representations) on a \texttt{Log2}-normalized $4\times4$ game board. Our agent is purely reactive with no forward thinking or search. Important hyperparameters included, with some variations between training, a replay buffer size of 100K transitions, batch size of 128, target network update frequency at every 1K steps, and learning rate at $10^{-4}$ with $\varepsilon$-greedy exploration schedule decaying to $0.02$ over training time. We optimize with unprocessed game merge rewards (or log-merge for ablated experiments). It is a lightweight method, unable to play well when the obstacle obstructs the corner showing the difficulty with model-free methods within spatial constraints and for uncertain game start locations.
 
 \subsection{Improved: AlphaZero (MCTS + Hybrid CNN)}
 To address the limitations of reactive policies in the Constrained environment, we implemented a variation of the AlphaZero algorithm adapted for single-player stochastic domains. The architecture consists of two primary components: a Monte Carlo Tree Search (MCTS) engine for planning and a Deep Neural Network for intuition.
@@ -186,15 +196,29 @@ Additional cost arises from processing Chance Nodes to model stochastic tile spa
 \begin{thebibliography}{9}
 
 % Add other references here
-\bibitem{gayas2014}
-Gayas, V. (2014). \textit{2048 Using Expectimax}. Miner School of Computer and Information Sciences, UMass Lowell. Available at: \url{https://www.cs.uml.edu/ecg/uploads/AIfall14/vignesh_gayas_2048_project.pdf}
+\bibitem{antonoglou2022}
+Antonoglou, I., et al. (2022). Planning in Stochastic Environments with a Learned Model. \textit{International Conference on Learning Representations (ICLR)}. Available at: \url{https://openreview.net/pdf?id=X6D9bAHhBQ1}
 
 \bibitem{fuchs2020}
 Fuchs, S. (2020). \textit{2048 AI | Develop \& Fix}. Available at: \url{https://www.sam-fuchs.com/s/projects/2048/}
 
-\bibitem{antonoglou2022}
-Antonoglou, I., et al. (2022). Planning in Stochastic Environments with a Learned Model. \textit{International Conference on Learning Representations (ICLR)}. Available at: \url{https://openreview.net/pdf?id=X6D9bAHhBQ1}
+\bibitem{gayas2014}
+Gayas, V. (2014). \textit{2048 Using Expectimax}. Miner School of Computer and Information Sciences, UMass Lowell. Available at: \url{https://www.cs.uml.edu/ecg/uploads/AIfall14/vignesh_gayas_2048_project.pdf}
 
+\bibitem{hessel2018rainbow}
+Hessel, M., Modayil, J., Van Hasselt, H., et al. (2018). \textit{Rainbow: Combining improvements in deep reinforcement learning}. In AAAI Conference on Artificial Intelligence (AAAI). https://arxiv.org/abs/1710.02298 
+
+\bibitem{mnih2015dqn}
+Mnih, V., Kavukcuoglu, K., Silver, D., et al. (2015).  \textit{Human-level control through deep reinforcement learning}. Nature. https://web.stanford.edu/class/psych209/Readings/MnihEtAlHassibis15NatureControlDeepRL.pdf 
+
+\bibitem{schaul2016per}
+Schaul, T., Quan, J., Antonoglou, I., \& Silver, D. (2016). \textit{Prioritized experience replay}. In International Conference on Learning Representations (ICLR). https://arxiv.org/abs/1511.05952 
+
+\bibitem{silver2018azero}
+Silver, D., Hubert, T., Schrittwieser, J., et al. (2018). \textit{A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play}. Science. https://storage.googleapis.com/deepmind-media/DeepMind.com/Blog/alphazero-shedding-new-light-on-chess-shogi-and-go/alphazero\_preprint.pdf 
+
+\bibitem{szepesvari2010}
+Szepesvári, C. (2010). \textit{Algorithms for reinforcement learning}. Synthesis Lectures on Artificial Intelligence and Machine Learning. Morgan \& Claypool Publishers. https://doi.org/10.2200/S00268ED1V01Y201005AIM009 
 \end{thebibliography}
 
 \end{document}
