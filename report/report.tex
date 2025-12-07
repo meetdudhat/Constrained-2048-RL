@@ -155,11 +155,24 @@ The results indicate a decisive advantage for the Model-Based approach. In the S
 
 \subsection{Ablation Studies}
 \label{sec:ablation}
-\textit{[Member 4: Discuss Log2 vs Raw Values. Use the data: Log2 Avg Score (2096) vs Raw Values Avg Score (1025). Conclusion: Normalization is critical.]}
+
+
+To understand the influence of state representation on learning stability, we conducted an ablation comparing two encodings of the 2048 board: (1) Raw tile values, where entries range exponentially from 2 to 65{,}536, and (2) a Log$_2$ encoding that compresses all tiles into the range 1--16. When trained with Raw values, the AlphaZero agent achieved an average score of only 1{,}025 and frequently produced erratic value estimates. The sharp numerical disparity between small and large tiles caused unstable gradients in the Hybrid-Kernel CNN, reducing the reliability of MCTS rollouts.
+
+
+\includegraphics[width = 1 \textwidth]{images/raw_vs_log.png}
+
+In contrast, the Log$_2$ representation yielded an average score of 2{,}096, nearly doubling performance. This improvement stems from transforming the exponentially scaled tile distribution into a linear space that is easier for the network to model. The normalized representation allowed the CNN to learn merge patterns more consistently and enabled MCTS to propagate value estimates more accurately across simulated trajectories. Overall, our ablation confirms that normalization is not merely beneficial but essential for robust policy learning in 2048-like domains.
+
 
 \subsection{Complexity Analysis}
-\textit{[Member 4: Compare training times. AlphaZero took ~10 hours vs Baseline ~30 mins. Discuss the trade-off between training cost and inference quality.]}
 
+
+Although both agents operate in the same environment, their computational demands differ significantly. The Baseline DQN required approximately 30 minutes of training, driven largely by simple forward passes through a lightweight MLP and off-policy updates using batches from the replay buffer. In contrast, the AlphaZero pipeline required close to 10 hours to train under comparable evaluation conditions. The principal source of overhead is Monte Carlo Tree Search: each move requires 150 simulations, each simulation invoking multiple forward passes through the Hybrid-Kernel CNN.
+
+\includegraphics[width = 1 \textwidth]{images/tarining_time.png}
+
+Additional cost arises from processing Chance Nodes to model stochastic tile spawning, which further expands the number of states evaluated during planning. Despite this expense, the resulting policy is substantially stronger and far more adaptive, particularly in the Constrained environment where long-term spatial reasoning is required. Importantly, while training is costly, inference after training is efficient and requires only a single network evaluation per move. This reflects a classic trade-off in reinforcement learning: higher upfront computation yields significantly improved decision quality.
 % ==========================================
 % SECTION 5: CONCLUSION
 % ==========================================
