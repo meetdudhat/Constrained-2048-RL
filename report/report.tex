@@ -1,375 +1,211 @@
-% partial rewrite of the LaTeX2e package for submissions to the
-% Conference on Neural Information Processing Systems (NeurIPS):
-%
-% - uses more LaTeX conventions
-% - line numbers at submission time replaced with aligned numbers from
-%   lineno package
-% - \nipsfinalcopy replaced with [final] package option
-% - automatically loads times package for authors
-% - loads natbib automatically; this can be suppressed with the
-%   [nonatbib] package option
-% - adds foot line to first page identifying the conference
-% - adds preprint option for submission to e.g. arXiv
-% - conference acronym modified
-%
-% Roman Garnett (garnett@wustl.edu) and the many authors of
-% nips15submit_e.sty, including MK and drstrip@sandia
-%
-% last revision: March 2023
+\documentclass{article}
 
-\NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{neurips_2023}[2023/03/31 NeurIPS 2023 submission/camera-ready style file]
+% --- NeurIPS Style ---
+\usepackage[preprint]{neurips_2023}
 
-% declare final option, which creates camera-ready copy
-\newif\if@neuripsfinal\@neuripsfinalfalse
-\DeclareOption{final}{
-  \@neuripsfinaltrue
+% --- Packages ---
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+\usepackage{graphicx}
+\usepackage{amsmath, amssymb}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% --- Title ---
+\title{Reinforcement Learning for Constrained 2048: \\ A Comparative Study of Deep Q-Networks and AlphaZero}
+
+% --- Authors ---
+\author{%
+  Ayman Madani \\
+  Department of Computer Science\\
+  Carleton University\\
+  \texttt{aymanmadani@cmail.carleton.ca} \\
+  \And
+  Jason Xu \\
+  Department of Computer Science\\
+  Carleton University\\
+  \texttt{jasonxu@cmail.carleton.ca} \\
+  \And
+  Sachin Bansal \\
+  Department of Computer Science\\
+  Carleton University\\
+  \texttt{sachinbansal@cmail.carleton.ca} \\
+  \And
+  Meetkumar Dudhat \\
+  Department of Computer Science\\
+  Carleton University\\
+  \texttt{meetkumardudhat@cmail.carleton.ca} \\
+  \And
+  Arya Shah \\
+  Department of Computer Science\\
+  Carleton University\\
+  \texttt{aryashah@cmail.carleton.ca} \\
 }
 
-% declare nonatbib option, which does not load natbib in case of
-% package clash (users can pass options to natbib via
-% \PassOptionsToPackage)
-\newif\if@natbib\@natbibtrue
-\DeclareOption{nonatbib}{
-  \@natbibfalse
-}
+\begin{document}
 
-% declare preprint option, which creates a preprint version ready for
-% upload to, e.g., arXiv
-\newif\if@preprint\@preprintfalse
-\DeclareOption{preprint}{
-  \@preprinttrue
-}
+\maketitle
 
-\ProcessOptions\relax
+\begin{abstract}
+  This project investigates the effectiveness of Model-Free versus Model-Based Reinforcement Learning in solving the stochastic puzzle game 2048, with a specific focus on a ``Constrained'' variant containing an immovable obstacle. We implement a baseline Deep Q-Network (DQN) using Stable Baselines3 and compare it against a custom AlphaZero implementation featuring a Monte Carlo Tree Search (MCTS) engine and a Hybrid-Kernel Convolutional Neural Network. Empirical results demonstrate that while the reactive DQN struggles to adapt to the constrained environment (Average Score: 1,226), the deliberative AlphaZero agent successfully plans around the obstacle (Average Score: 2,231), achieving a 1.8x performance improvement. The study confirms that lookahead search is essential for navigating constrained stochastic domains.
+\end{abstract}
 
-% determine whether this is an anonymized submission
-\newif\if@submission\@submissiontrue
-\if@neuripsfinal\@submissionfalse\fi
-\if@preprint\@submissionfalse\fi
+% ==========================================
+% SECTION 1: INTRODUCTION
+% ==========================================
+\section{Introduction}
+\label{sec:intro}
 
-% fonts
-\renewcommand{\rmdefault}{ptm}
-\renewcommand{\sfdefault}{phv}
+\textit{[Member 2: Define the problem. Mention that 2048's a state space. Explain why this is hard. Introduce the "Constrained" environment (immovable block at 3,0) and why it breaks standard strategies.]}
 
-% change this every year for notice string at bottom
-\newcommand{\@neuripsordinal}{37th}
-\newcommand{\@neuripsyear}{2023}
-\newcommand{\@neuripslocation}{New Orleans}
+\subsection{MDP Specifications}
+\label{sec:mdp}
+\textit{[Member 2: Formalize the Standard Markov Decision Process here. PLEASE NOTE: Add the definition of the original \textbf{Standard Reward} (points for merging) here vs the improved MDP]}
+\begin{itemize}
+    \item \textbf{State Space ($S$):} A $4 \times 4$ grid where each tile $t \in \{2^1, \dots, 2^{16}\}$.
+    \item \textbf{Action Space ($A$):} Discrete set $\{ \text{Up, Down, Left, Right} \}$.
+    \item \textbf{Reward Function ($R$):} Sparse binary reward ($+1$ for Win, $-1$ for Loss).
+    \item \textbf{Transitions ($P$):} Stochastic tile spawning ($90\%$ prob of 2, $10\%$ prob of 4).
+\end{itemize}
 
-% acknowledgments
-\usepackage{environ}
-\newcommand{\acksection}{\section*{Acknowledgments and Disclosure of Funding}}
-\NewEnviron{ack}{%
-  \acksection
-  \BODY
-}
+% ==========================================
+% SECTION 2: PRIOR WORK
+% ==========================================
+\section{Related Work}
+\label{sec:related}
+Szepesvári's \textit{Algorithms for Reinforcement Learning} \cite{szepesvari2010} gives us the theory behind value-based methods and was the first to establish PAC bounds on tabular Q-learning and explore the difficulties of function approximation. Our DQN baseline implementation is a DQN version of these classical principles, but operates  in a high-dimensional setting where neural networks approximate $Q(s,a)$. This is exactly the case where Szepesvári's exploration-exploitation paradox is particularly important in the given context and where extra dimensionality complicates things.
+
+Model-free value-based reinforcement learning was popularized by the Deep Q-Network (DQN) algorithm \cite{mnih2015dqn} by Mnih et al., which improved Q-learning on Atari with the help of replay buffers and target networks. Our baseline approach uses essentially the same recipe (replay and target network) on a reduced $4\times4$ grid with tile placement noise and a static obstacle such that generalization is more a result of exploration than image feature generalization.
+
+In Prioritized Experience Replay from Schaul et al. \cite{schaul2016per}, sample efficiency is increased by replaying transitions with high TDerror. For this project, we chose to only implement uniform replay; however, with the potential benefits of replay priorities, fewer episodes may be necessary for obstacle-aware policies.
+
+Rainbow DQN \cite{hessel2018rainbow} combines six extensions (Double Q-learning, PER, multi-step return, dueling networks with multi-output heads, Noisy Nets, distributional RL) and achieves significant Atari improvements. Our baseline excludes these for being simpler; the multi-step return and Noisy Nets from Rainbow might assist with sparse rewards from the game's merge action and continued exploration after the replay buffer is full.
+
+AlphaZero by Silver et al. \cite{silver2018azero} integrates policy-value networks with Monte Carlo Tree Search (MCTS) for perfect information game play. Our model-based agent adopts this planning approach and modifies the application scope of MCTS to a stochastic single-player environment with chance nodes for tile appearances and hybrid kernels for examining full rows and columns, thus explaining its strength within the limited environment that requires significant planning.
+
+Gayas (Expectimax for 2048) \cite{gayas2014} implement depth-limited searches with carefully designed features involving the ability to merge/monotonicity. In comparison to the above-mentioned traditional depth-limited searches as baselines, while the DQN learns to estimate values from experience instead and lacks any form of lookahead, which degrades when the immovable block breaks the standard cornering heuristics.
+
+Antonoglou et al.\ \cite{antonoglou2022} investigate planning with learnable models in stochastic tasks. Their observations confirm our finding: AlphaZero-style model-based rollouts perform better than reactive value-based approaches if one has to plan for uncertainty about the future (tile appearance) and structural constraints (cell occupied).
+% ==========================================
+% SECTION 3: APPROACHES
+% ==========================================
+\section{Approaches}
+\label{sec:approach}
+
+\subsection{Baseline: Deep Q-Network (DQN)}
+We apply a standard DQN from Stable Baselines3 with an MLP policy (two layers with 256-dimensional hidden representations) on a \texttt{Log2}-normalized $4\times4$ game board. Our agent is purely reactive with no forward thinking or search. Important hyperparameters included, with some variations between training, a replay buffer size of 100K transitions, batch size of 128, target network update frequency at every 1K steps, and learning rate at $10^{-4}$ with $\varepsilon$-greedy exploration schedule decaying to $0.02$ over training time. We optimize with unprocessed game merge rewards (or log-merge for ablated experiments). It is a lightweight method, unable to play well when the obstacle obstructs the corner showing the difficulty with model-free methods within spatial constraints and for uncertain game start locations.
+
+\subsection{Improved: AlphaZero (MCTS + Hybrid CNN)}
+To address the limitations of reactive policies in the Constrained environment, we implemented a variation of the AlphaZero algorithm adapted for single-player stochastic domains. The architecture consists of two primary components: a Monte Carlo Tree Search (MCTS) engine for planning and a Deep Neural Network for intuition.
+
+\subsubsection{Stochastic MCTS Engine}
+Unlike the standard AlphaZero algorithm which assumes an adversarial opponent (Minimax), our MCTS models the environment as a stochastic actor. The search tree alternates between two node types:
+\begin{itemize}
+    \item \textbf{Decision Nodes:} Represent states where the agent selects an action $a \in A$. Selection follows the Predictor + Upper Confidence Bound (PUCT) formula to balance exploration and exploitation.
+    \item \textbf{Chance Nodes:} Represent states where the environment spawns a tile. These nodes do not use UCB but instead expand children based on the transition probabilities ($0.9$ for a 2, $0.1$ for a 4).
+\end{itemize}
+This distinction allows the agent to calculate the \textit{expected value} of a move over 150 future simulations, effectively ``imagining'' the board filling up around the obstacle.
+
+\subsubsection{Hybrid-Kernel Neural Network}
+Standard Convolutional Neural Networks (CNNs) utilize $3 \times 3$ filters, which are optimized for local spatial features in images. However, 2048 mechanics rely on sliding entire rows and columns. To capture this, we designed a Hybrid-Kernel architecture:
+\begin{itemize}
+    \item \textbf{$1 \times 4$ Kernels:} Scan entire horizontal rows to detect merge potential and obstructions.
+    \item \textbf{$4 \times 1$ Kernels:} Scan entire vertical columns.
+\end{itemize}
+This architectural choice provides the agent with the global context necessary to detect if a ``snake'' chain is broken by the immovable block in the constrained environment.
+
+\subsubsection{State Representation \& Optimization}
+We addressed the exponential scale of tile values (2 vs 65,536) by implementing a \texttt{Log2} normalization wrapper, converting values to a linear scale ($1 \dots 16$). Furthermore, to support the computational demands of MCTS, the game physics engine was optimized using Numba JIT compilation, accelerating simulation speed by approximately $50\times$.
+
+% ==========================================
+% SECTION 4: EMPIRICAL STUDIES
+% ==========================================
+\section{Empirical Studies}
+\label{sec:experiments}
+
+\subsection{Experimental Setup}
+We evaluated both agents in two environments:
+\begin{enumerate}
+    \item \textbf{Standard:} Classic 2048 rules.
+    \item \textbf{Constrained:} An immovable block (value $-1$) is placed at coordinate $(3,0)$.
+\end{enumerate}
+Evaluation metrics include Average Score, Max Tile Reached, and Win Rate over 100 test episodes.
+
+\subsection{Main Results}
+Table \ref{tab:results} summarizes the performance comparison.
 
 
-% load natbib unless told otherwise
-\if@natbib
-  \RequirePackage{natbib}
-\fi
-
-% set page geometry
-\usepackage[verbose=true,letterpaper]{geometry}
-\AtBeginDocument{
-  \newgeometry{
-    textheight=9in,
-    textwidth=5.5in,
-    top=1in,
-    headheight=12pt,
-    headsep=25pt,
-    footskip=30pt
-  }
-  \@ifpackageloaded{fullpage}
-    {\PackageWarning{neurips_2023}{fullpage package not allowed! Overwriting formatting.}}
-    {}
-}
-
-\widowpenalty=10000
-\clubpenalty=10000
-\flushbottom
-\sloppy
-
-
-% font sizes with reduced leading
-\renewcommand{\normalsize}{%
-  \@setfontsize\normalsize\@xpt\@xipt
-  \abovedisplayskip      7\p@ \@plus 2\p@ \@minus 5\p@
-  \abovedisplayshortskip \z@ \@plus 3\p@
-  \belowdisplayskip      \abovedisplayskip
-  \belowdisplayshortskip 4\p@ \@plus 3\p@ \@minus 3\p@
-}
-\normalsize
-\renewcommand{\small}{%
-  \@setfontsize\small\@ixpt\@xpt
-  \abovedisplayskip      6\p@ \@plus 1.5\p@ \@minus 4\p@
-  \abovedisplayshortskip \z@  \@plus 2\p@
-  \belowdisplayskip      \abovedisplayskip
-  \belowdisplayshortskip 3\p@ \@plus 2\p@   \@minus 2\p@
-}
-\renewcommand{\footnotesize}{\@setfontsize\footnotesize\@ixpt\@xpt}
-\renewcommand{\scriptsize}{\@setfontsize\scriptsize\@viipt\@viiipt}
-\renewcommand{\tiny}{\@setfontsize\tiny\@vipt\@viipt}
-\renewcommand{\large}{\@setfontsize\large\@xiipt{14}}
-\renewcommand{\Large}{\@setfontsize\Large\@xivpt{16}}
-\renewcommand{\LARGE}{\@setfontsize\LARGE\@xviipt{20}}
-\renewcommand{\huge}{\@setfontsize\huge\@xxpt{23}}
-\renewcommand{\Huge}{\@setfontsize\Huge\@xxvpt{28}}
-
-% sections with less space
-\providecommand{\section}{}
-\renewcommand{\section}{%
-  \@startsection{section}{1}{\z@}%
-                {-2.0ex \@plus -0.5ex \@minus -0.2ex}%
-                { 1.5ex \@plus  0.3ex \@minus  0.2ex}%
-                {\large\bf\raggedright}%
-}
-\providecommand{\subsection}{}
-\renewcommand{\subsection}{%
-  \@startsection{subsection}{2}{\z@}%
-                {-1.8ex \@plus -0.5ex \@minus -0.2ex}%
-                { 0.8ex \@plus  0.2ex}%
-                {\normalsize\bf\raggedright}%
-}
-\providecommand{\subsubsection}{}
-\renewcommand{\subsubsection}{%
-  \@startsection{subsubsection}{3}{\z@}%
-                {-1.5ex \@plus -0.5ex \@minus -0.2ex}%
-                { 0.5ex \@plus  0.2ex}%
-                {\normalsize\bf\raggedright}%
-}
-\providecommand{\paragraph}{}
-\renewcommand{\paragraph}{%
-  \@startsection{paragraph}{4}{\z@}%
-                {1.5ex \@plus 0.5ex \@minus 0.2ex}%
-                {-1em}%
-                {\normalsize\bf}%
-}
-\providecommand{\subparagraph}{}
-\renewcommand{\subparagraph}{%
-  \@startsection{subparagraph}{5}{\z@}%
-                {1.5ex \@plus 0.5ex \@minus 0.2ex}%
-                {-1em}%
-                {\normalsize\bf}%
-}
-\providecommand{\subsubsubsection}{}
-\renewcommand{\subsubsubsection}{%
-  \vskip5pt{\noindent\normalsize\rm\raggedright}%
-}
-
-% float placement
-\renewcommand{\topfraction      }{0.85}
-\renewcommand{\bottomfraction   }{0.4}
-\renewcommand{\textfraction     }{0.1}
-\renewcommand{\floatpagefraction}{0.7}
-
-\newlength{\@neuripsabovecaptionskip}\setlength{\@neuripsabovecaptionskip}{7\p@}
-\newlength{\@neuripsbelowcaptionskip}\setlength{\@neuripsbelowcaptionskip}{\z@}
-
-\setlength{\abovecaptionskip}{\@neuripsabovecaptionskip}
-\setlength{\belowcaptionskip}{\@neuripsbelowcaptionskip}
-
-% swap above/belowcaptionskip lengths for tables
-\renewenvironment{table}
-  {\setlength{\abovecaptionskip}{\@neuripsbelowcaptionskip}%
-   \setlength{\belowcaptionskip}{\@neuripsabovecaptionskip}%
-   \@float{table}}
-  {\end@float}
-
-% footnote formatting
-\setlength{\footnotesep }{6.65\p@}
-\setlength{\skip\footins}{9\p@ \@plus 4\p@ \@minus 2\p@}
-\renewcommand{\footnoterule}{\kern-3\p@ \hrule width 12pc \kern 2.6\p@}
-\setcounter{footnote}{0}
-
-% paragraph formatting
-\setlength{\parindent}{\z@}
-\setlength{\parskip  }{5.5\p@}
-
-% list formatting
-\setlength{\topsep       }{4\p@ \@plus 1\p@   \@minus 2\p@}
-\setlength{\partopsep    }{1\p@ \@plus 0.5\p@ \@minus 0.5\p@}
-\setlength{\itemsep      }{2\p@ \@plus 1\p@   \@minus 0.5\p@}
-\setlength{\parsep       }{2\p@ \@plus 1\p@   \@minus 0.5\p@}
-\setlength{\leftmargin   }{3pc}
-\setlength{\leftmargini  }{\leftmargin}
-\setlength{\leftmarginii }{2em}
-\setlength{\leftmarginiii}{1.5em}
-\setlength{\leftmarginiv }{1.0em}
-\setlength{\leftmarginv  }{0.5em}
-\def\@listi  {\leftmargin\leftmargini}
-\def\@listii {\leftmargin\leftmarginii
-              \labelwidth\leftmarginii
-              \advance\labelwidth-\labelsep
-              \topsep  2\p@ \@plus 1\p@    \@minus 0.5\p@
-              \parsep  1\p@ \@plus 0.5\p@ \@minus 0.5\p@
-              \itemsep \parsep}
-\def\@listiii{\leftmargin\leftmarginiii
-              \labelwidth\leftmarginiii
-              \advance\labelwidth-\labelsep
-              \topsep    1\p@ \@plus 0.5\p@ \@minus 0.5\p@
-              \parsep    \z@
-              \partopsep 0.5\p@ \@plus 0\p@ \@minus 0.5\p@
-              \itemsep \topsep}
-\def\@listiv {\leftmargin\leftmarginiv
-              \labelwidth\leftmarginiv
-              \advance\labelwidth-\labelsep}
-\def\@listv  {\leftmargin\leftmarginv
-              \labelwidth\leftmarginv
-              \advance\labelwidth-\labelsep}
-\def\@listvi {\leftmargin\leftmarginvi
-              \labelwidth\leftmarginvi
-              \advance\labelwidth-\labelsep}
-
-% create title
-\providecommand{\maketitle}{}
-\renewcommand{\maketitle}{%
-  \par
-  \begingroup
-    \renewcommand{\thefootnote}{\fnsymbol{footnote}}
-    % for perfect author name centering
-    \renewcommand{\@makefnmark}{\hbox to \z@{$^{\@thefnmark}$\hss}}
-    % The footnote-mark was overlapping the footnote-text,
-    % added the following to fix this problem               (MK)
-    \long\def\@makefntext##1{%
-      \parindent 1em\noindent
-      \hbox to 1.8em{\hss $\m@th ^{\@thefnmark}$}##1
-    }
-    \thispagestyle{empty}
-    \@maketitle
-    \@thanks
-    \@notice
-  \endgroup
-  \let\maketitle\relax
-  \let\thanks\relax
-}
-
-% rules for title box at top of first page
-\newcommand{\@toptitlebar}{
-  \hrule height 4\p@
-  \vskip 0.25in
-  \vskip -\parskip%
-}
-\newcommand{\@bottomtitlebar}{
-  \vskip 0.29in
-  \vskip -\parskip
-  \hrule height 1\p@
-  \vskip 0.09in%
-}
-
-% create title (includes both anonymized and non-anonymized versions)
-\providecommand{\@maketitle}{}
-\renewcommand{\@maketitle}{%
-  \vbox{%
-    \hsize\textwidth
-    \linewidth\hsize
-    \vskip 0.1in
-    \@toptitlebar
+\begin{table}[h]
     \centering
-    {\LARGE\bf \@title\par}
-    \@bottomtitlebar
-    \if@submission
-      \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}
-        Anonymous Author(s) \\
-        Affiliation \\
-        Address \\
-        \texttt{email} \\
-      \end{tabular}%
-    \else
-      \def\And{%
-        \end{tabular}\hfil\linebreak[0]\hfil%
-        \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\ignorespaces%
-      }
-      \def\AND{%
-        \end{tabular}\hfil\linebreak[4]\hfil%
-        \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\ignorespaces%
-      }
-      \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\@author\end{tabular}%
-    \fi
-    \vskip 0.3in \@minus 0.1in
-  }
-}
+    \caption{Performance comparison over 100 episodes.}
+    \label{tab:results}
+    \begin{tabular}{llccc}
+        \toprule
+        \textbf{Environment} & \textbf{Agent} & \textbf{Avg Score} & \textbf{Max Tile (Avg)} & \textbf{Improvement} \\
+        \midrule
+        Standard & Baseline (DQN) & 2,096 & 187 & - \\
+        Standard & \textbf{AlphaZero (Ours)} & \textbf{7,371} & \textbf{560} & \textbf{+251\%} \\
+        \midrule
+        Constrained & Baseline (DQN) & 1,226 & 129 & - \\
+        Constrained & \textbf{AlphaZero (Ours)} & \textbf{2,231} & \textbf{202} & \textbf{+82\%} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
-% add conference notice to bottom of first page
-\newcommand{\ftype@noticebox}{8}
-\newcommand{\@notice}{%
-  % give a bit of extra room back to authors on first page
-  \enlargethispage{2\baselineskip}%
-  \@float{noticebox}[b]%
-    \footnotesize\@noticestring%
-  \end@float%
-}
+The results indicate a decisive advantage for the Model-Based approach. In the Standard environment, AlphaZero achieved an average score $3.5\times$ higher than the Baseline. More importantly, in the \textbf{Constrained} environment, the Baseline's performance degraded by $41\%$ as it failed to adapt to the dead zone. The AlphaZero agent, utilizing lookahead search, successfully navigated the constraint, maintaining a strong average score of 2,231. Qualitative analysis of the final board states reveals that the AlphaZero agent learned to anchor its tile chain in the corner \textit{opposite} the immovable block, a strategic adaptation that the reactive Baseline failed to discover.
 
-% abstract styling
-\renewenvironment{abstract}%
-{%
-  \vskip 0.075in%
-  \centerline%
-  {\large\bf Abstract}%
-  \vspace{0.5ex}%
-  \begin{quote}%
-}
-{
-  \par%
-  \end{quote}%
-  \vskip 1ex%
-}
+\subsection{Ablation Studies}
+\label{sec:ablation}
+\textit{[Member 4: Discuss Log2 vs Raw Values. Use the data: Log2 Avg Score (2096) vs Raw Values Avg Score (1025). Conclusion: Normalization is critical.]}
 
-% handle tweaks for camera-ready copy vs. submission copy
-\if@preprint
-  \newcommand{\@noticestring}{%
-    Preprint. Under review.%
-  }
-\else
-  \if@neuripsfinal
-    \newcommand{\@noticestring}{%
-      \@neuripsordinal\/ Conference on Neural Information Processing Systems
-      (NeurIPS \@neuripsyear).%, \@neuripslocation.%
-    }
-  \else
-    \newcommand{\@noticestring}{%
-      Submitted to \@neuripsordinal\/ Conference on Neural Information
-      Processing Systems (NeurIPS \@neuripsyear). Do not distribute.%
-    }
+\subsection{Complexity Analysis}
+\textit{[Member 4: Compare training times. AlphaZero took ~10 hours vs Baseline ~30 mins. Discuss the trade-off between training cost and inference quality.]}
 
-    % hide the acknowledgements
-    \NewEnviron{hide}{}
-    \let\ack\hide
-    \let\endack\endhide
+% ==========================================
+% SECTION 5: CONCLUSION
+% ==========================================
+\section{Conclusion}
+\label{sec:conclusion}
+\textit{[Member 5: Summarize the project. What did we learn? Future work: Train for longer, use deeper ResNet, dynamic constraints.]}
 
-    % line numbers for submission
-    \RequirePackage{lineno}
-    \linenumbers
+% --- References ---
+\medskip
+\small
+\begin{thebibliography}{9}
 
-    % fix incompatibilities between lineno and amsmath, if required, by
-    % transparently wrapping linenomath environments around amsmath
-    % environments
-    \AtBeginDocument{%
-      \@ifpackageloaded{amsmath}{%
-        \newcommand*\patchAmsMathEnvironmentForLineno[1]{%
-          \expandafter\let\csname old#1\expandafter\endcsname\csname #1\endcsname
-          \expandafter\let\csname oldend#1\expandafter\endcsname\csname end#1\endcsname
-          \renewenvironment{#1}%
-                          {\linenomath\csname old#1\endcsname}%
-                          {\csname oldend#1\endcsname\endlinenomath}%
-        }%
-        \newcommand*\patchBothAmsMathEnvironmentsForLineno[1]{%
-          \patchAmsMathEnvironmentForLineno{#1}%
-          \patchAmsMathEnvironmentForLineno{#1*}%
-        }%
-        \patchBothAmsMathEnvironmentsForLineno{equation}%
-        \patchBothAmsMathEnvironmentsForLineno{align}%
-        \patchBothAmsMathEnvironmentsForLineno{flalign}%
-        \patchBothAmsMathEnvironmentsForLineno{alignat}%
-        \patchBothAmsMathEnvironmentsForLineno{gather}%
-        \patchBothAmsMathEnvironmentsForLineno{multline}%
-      }
-      {}
-    }
-  \fi
-\fi
+% Add other references here
+\bibitem{antonoglou2022}
+Antonoglou, I., et al. (2022). Planning in Stochastic Environments with a Learned Model. \textit{International Conference on Learning Representations (ICLR)}. Available at: \url{https://openreview.net/pdf?id=X6D9bAHhBQ1}
 
+\bibitem{fuchs2020}
+Fuchs, S. (2020). \textit{2048 AI | Develop \& Fix}. Available at: \url{https://www.sam-fuchs.com/s/projects/2048/}
 
-\endinput
+\bibitem{gayas2014}
+Gayas, V. (2014). \textit{2048 Using Expectimax}. Miner School of Computer and Information Sciences, UMass Lowell. Available at: \url{https://www.cs.uml.edu/ecg/uploads/AIfall14/vignesh_gayas_2048_project.pdf}
+
+\bibitem{hessel2018rainbow}
+Hessel, M., Modayil, J., Van Hasselt, H., et al. (2018). \textit{Rainbow: Combining improvements in deep reinforcement learning}. In AAAI Conference on Artificial Intelligence (AAAI). https://arxiv.org/abs/1710.02298 
+
+\bibitem{mnih2015dqn}
+Mnih, V., Kavukcuoglu, K., Silver, D., et al. (2015).  \textit{Human-level control through deep reinforcement learning}. Nature. https://web.stanford.edu/class/psych209/Readings/MnihEtAlHassibis15NatureControlDeepRL.pdf 
+
+\bibitem{schaul2016per}
+Schaul, T., Quan, J., Antonoglou, I., \& Silver, D. (2016). \textit{Prioritized experience replay}. In International Conference on Learning Representations (ICLR). https://arxiv.org/abs/1511.05952 
+
+\bibitem{silver2018azero}
+Silver, D., Hubert, T., Schrittwieser, J., et al. (2018). \textit{A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play}. Science. https://storage.googleapis.com/deepmind-media/DeepMind.com/Blog/alphazero-shedding-new-light-on-chess-shogi-and-go/alphazero\_preprint.pdf 
+
+\bibitem{szepesvari2010}
+Szepesvári, C. (2010). \textit{Algorithms for reinforcement learning}. Synthesis Lectures on Artificial Intelligence and Machine Learning. Morgan \& Claypool Publishers. https://doi.org/10.2200/S00268ED1V01Y201005AIM009 
+\end{thebibliography}
+
+\end{document}
